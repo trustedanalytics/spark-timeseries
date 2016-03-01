@@ -43,20 +43,15 @@
   </properties>
 
   <distributionManagement>
-    <repository>
-      <id>sparkts.repo</id>
-      <url>https://repository.cloudera.com/artifactory/libs-release-local</url>
-    </repository>
-    <snapshotRepository>
-      <id>sparkts.snapshots.repo</id>
-      <url>https://repository.cloudera.com/artifactory/libs-snapshot-local</url>
-    </snapshotRepository>
-    <site>
-      <id>sparkts.website</id>
-      <name>Spark TS documentation</name>
-      <url>http://cloudera.github.io/spark-timeseries/</url>
-    </site>
-  </distributionManagement>
+        <repository>
+            <id>atk</id>
+            <url>https://maven.trustedanalytics.org/content/repositories/releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>atk-snapshots</id>
+            <url>https://maven.trustedanalytics.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
   
   <build>
     <plugins>
@@ -311,24 +306,6 @@
             </goals>
           </execution>
         </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-gpg-plugin</artifactId>
-        <version>1.6</version>
-        <executions>
-          <execution>
-            <id>sign-artifacts</id>
-            <phase>verify</phase>
-            <goals>
-              <goal>sign</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <keyname>Sandy Ryza &lt;sandyryza@gmail.com&gt;</keyname>
-          <executable>gpg2</executable>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
