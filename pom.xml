@@ -24,7 +24,12 @@
   <prerequisites>
     <maven>3.1.1</maven>
   </prerequisites>
-
+<licenses>
+    <license>
+      <name>Apache 2.0 License</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
   <scm>
     <connection>scm:git:https://github.com/cloudera/spark-timeseries.git</connection>
     <url>scm:git:https://github.com/cloudera/spark-timeseries.git</url>
