@@ -42,7 +42,7 @@ object ARIMAX {
     *
     * @param p Autoregressive order
     * @param d Differencing order
-    * @param q Aoving average order
+    * @param q Moving average order
     * @param ts Time series to which to fit an ARIMAX(p, d, q) model
     * @param xreg A matrix of exogenous variables
     * @param xregMaxLag The maximum lag order for the dependent variable
@@ -63,37 +63,41 @@ object ARIMAX {
                xregMaxLag: Int,
                includeOriginalXreg: Boolean = true,
                includeIntercept: Boolean = true,
-               userInitParams: Array[Double] = null): ARIMAXModel = {
+               userInitParams: Option[Array[Double]] = None): ARIMAXModel = {
     val differentialTs = differencesOfOrderD(ts, d).toArray.drop(d)
 
-    val initParams = if (userInitParams == null) {
-      // [1] Time series data and exogenous values differentiate (http://robjhyndman.com/hyndsight/arimax/)
-      val tsArray = new BreezeDenseVector(ts.toArray)
-      val xregVector = new BreezeDenseVector(xreg.toArray)
-      val differentialXreg = differencesOfOrderD(xregVector, d).toArray
-      val differentialXregVector = new BreezeDenseVector(differentialXreg)
-      val differentialXregMatrix = new BreezeDenseMatrix(xreg.rows, xreg.cols, differentialXregVector.toArray)
+    val initParams = userInitParams match {
+      case Some(defined) => defined
+      case None => {
+        val arx = estimateARXCoefficients(ts, xreg, p, d, xregMaxLag, includeOriginalXreg, includeIntercept)
+        var ma = estimateMACoefficients(p, q, differentialTs, includeIntercept)
 
-      // [2] Use AutoregressionX model to get covariances and AR(n) coefficients
-      val arxModel = AutoregressionX.fitModel(tsArray, differentialXregMatrix, p, xregMaxLag, includeOriginalXreg)
-      val ar = arxModel.coefficients.slice(0, p)
-      val xregCoef = arxModel.coefficients.slice(p, arxModel.coefficients.length + xregMaxLag)
-      val c = if (includeIntercept) Array(arxModel.c) else Array(0.0)
-
-      // [3] Calculate MA(n) part using HR
-      val ma: Array[Double] = ARIMA.hannanRissanenInit(p, q, differentialTs, includeIntercept).takeRight(q)
-
-      // [4] Fit/smooth params using CGD
-      c ++ ar ++ ma ++ xregCoef
-    } else {
-      userInitParams
+        arx.take(p + 1) ++ ma ++ arx.drop(p + 1)
+      }
     }
-
+    // Fit/smooth params using CGD
     val params = fitWithCSSCGD(
-        p, d, q, xregMaxLag, differentialTs, includeOriginalXreg,includeIntercept, initParams)
+        p, d, q, xregMaxLag, differentialTs, includeOriginalXreg, includeIntercept, initParams)
 
     val model = new ARIMAXModel(p, d, q, xregMaxLag, params, includeOriginalXreg, includeIntercept)
     model
+  }
+  private def estimateARXCoefficients(ts: Vector, xreg: Matrix[Double], p: Int, d: Int, xregMaxLag: Int,includeOriginalXreg: Boolean, includeIntercept: Boolean): Array[Double] = {
+    // [Time series data and exogenous values differentiate (http://robjhyndman.com/hyndsight/arimax/)
+    val tsVector = new BreezeDenseVector(ts.toArray)
+    val xregVector = new BreezeDenseVector(xreg.toArray)
+    val differentialXregVector = new BreezeDenseVector(differencesOfOrderD(xregVector, d).toArray)
+    val differentialXregMatrix = new BreezeDenseMatrix(xreg.rows, xreg.cols, differentialXregVector.toArray)
+
+    // Use AutoregressionX model to get covariances and AR(n) coefficients
+    val arxModel = AutoregressionX.fitModel(tsVector, differentialXregMatrix, p, xregMaxLag, includeOriginalXreg)
+    val c = if (includeIntercept) Array(arxModel.c) else Array(0.0)
+
+    c ++ arxModel.coefficients
+  }
+
+  private def estimateMACoefficients(p: Int, q: Int, differentialTs: Array[Double], includeIntercept: Boolean): Array[Double] = {
+    ARIMA.hannanRissanenInit(p, q, differentialTs, includeIntercept).takeRight(q)
   }
 
   /**
@@ -116,7 +120,7 @@ object ARIMAX {
                      q: Int,
                      xregMaxLag: Int,
                      diffedY: Array[Double],
-                     includeOriginalXreg: Boolean = true,
+                     includeOriginalXreg: Boolean,
                      includeIntercept: Boolean,
                      initParams: Array[Double]): Array[Double] = {
 
@@ -126,20 +130,16 @@ object ARIMAX {
 
     val objFunction = new ObjectiveFunction(new MultivariateFunction() {
       def value(params: Array[Double]): Double = {
-        new ARIMAXModel(p, d, q, xregMaxLag, params, includeIntercept, includeOriginalXreg).logLikelihoodCSSARMA(diffedY)
+        new ARIMAXModel(p, d, q, xregMaxLag, params, includeOriginalXreg, includeIntercept).logLikelihoodCSSARMA(diffedY)
       }
     })
 
     val gradient = new ObjectiveFunctionGradient(new MultivariateVectorFunction() {
       def value(params: Array[Double]): Array[Double] = {
-        new ARIMAXModel(p, d, q, xregMaxLag, params, includeIntercept, includeOriginalXreg).gradientlogLikelihoodCSSARMA(diffedY)
+        new ARIMAXModel(p, d, q, xregMaxLag, params, includeOriginalXreg, includeIntercept).gradientlogLikelihoodCSSARMA(diffedY)
       }
     })
-
-    val initialGuess = new InitialGuess(initParams)
-    val maxIter = new MaxIter(10000)
-    val maxEval = new MaxEval(10000)
-    val goal = GoalType.MAXIMIZE
+    val (initialGuess, maxIter, maxEval, goal) = (new InitialGuess(initParams), new MaxIter(10000), new MaxEval(10000), GoalType.MAXIMIZE)
     val optimal = optimizer.optimize(objFunction, gradient, goal, initialGuess, maxIter, maxEval)
     optimal.getPoint
   }
@@ -172,7 +172,7 @@ class ARIMAXModel(
                    val includeIntercept: Boolean = true) extends TimeSeriesModel {
 
   /**
-    * Provided fitted values for timeseries ts as 1-step ahead forecasts, based on current
+    * Provide fitted values for timeseries ts as 1-step ahead forecasts, based on current
     * model parameters, and then provide `nFuture` periods of forecast. We assume AR terms
     * prior to the start of the series are equal to the model's intercept term (or 0.0, if fit
     * without and intercept term).Meanwhile, MA terms prior to the start are assumed to be 0.0. If
