@@ -150,7 +150,7 @@ object ARIMAX {
   *
   * @param p Autoregressive order
   * @param d Differencing order
-  * @param q Aoving average order
+  * @param q Moving average order
   * @param xregMaxLag The maximum lag order for exogenous variables.
   * @param coefficients The coefficients for the various terms. The order of coefficients is as
   *                     follows:
