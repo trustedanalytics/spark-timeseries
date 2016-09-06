@@ -479,8 +479,18 @@ class ARIMAXModel(
       // intercept (c)
       history(maxPQ) = op(history(maxPQ), intercept * coefficients(j))
 
-      // autoregressive terms with exogenous variables
+      // autoregressive terms
+//      println(s"j=$j  maxPQ=$maxPQ")
       while (j < p && maxPQ - j - 1 >= 0) {
+//        println(s"AR        j=$j  maxPQ=$maxPQ")
+        history(maxPQ) = op(history(maxPQ), ts(maxPQ - j - 1) * coefficients(intercept + j))
+        j += 1
+      }
+
+      j = 0
+      // exogenous variables
+      while (maxPQ - j - 1 >= 0 && j < p) {
+//        println(s"XREG        j=$j  maxPQ=$maxPQ")
         var xregImpact = if (includeOriginalXreg) {
           var value = 0.0
           for (i <- 0 until xreg.length) {
@@ -491,8 +501,7 @@ class ARIMAXModel(
           }
           value
         } else 0.0
-
-        history(maxPQ) = op(history(maxPQ), ts(maxPQ - j - 1) * coefficients(intercept + j)) + xregImpact
+        history(maxPQ) = op(history(maxPQ), xregImpact)
         j += 1
       }
 
