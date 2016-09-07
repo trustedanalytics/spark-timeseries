@@ -476,7 +476,15 @@ class ARIMAXModel(
     var error = 0.0
 
     val xregMatrix = new BreezeDenseMatrix(rows = xreg.flatten.length / xreg.size, cols = xreg.size, data = xreg.flatten)
-    val xregPredictors = AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(xregMatrix), 0, xregMaxLag, includeOriginalXreg)
+
+    val xregPredictors = try {
+      AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(xregMatrix), 0, xregMaxLag, includeOriginalXreg)
+    } catch {
+      case e: Exception => {
+        val newXregMatrix = new BreezeDenseMatrix(rows = (xreg.flatten.length - d) / xreg.size, cols = xreg.size, data = xreg.flatten)
+        AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(newXregMatrix), 0, xregMaxLag, includeOriginalXreg)
+      }
+    }
 
     while (maxPQ < tsSize) {
       j = 0
