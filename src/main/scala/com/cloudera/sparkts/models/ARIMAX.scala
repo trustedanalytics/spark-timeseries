@@ -15,7 +15,8 @@
 
 package com.cloudera.sparkts.models
 
-import breeze.linalg.{DenseMatrix => BreezeDenseMatrix, DenseVector => BreezeDenseVector, Matrix, diag, sum}
+import breeze.linalg.{Matrix, diag, sum, DenseMatrix => BreezeDenseMatrix, DenseVector => BreezeDenseVector}
+import com.cloudera.sparkts.MatrixUtil
 import com.cloudera.sparkts.MatrixUtil.{dvBreezeToSpark, mBreezeToSpark, toBreeze}
 import com.cloudera.sparkts.UnivariateTimeSeries.{differencesOfOrderD, inverseDifferencesOfOrderD}
 import org.apache.commons.math3.analysis.{MultivariateFunction, MultivariateVectorFunction}
@@ -474,41 +475,44 @@ class ARIMAXModel(
     val tsSize = ts.size
     var error = 0.0
 
+    val xregMatrix = new BreezeDenseMatrix(rows = xreg(1).length, cols = xreg.size, data = xreg.flatten)
+    val xregPredictors = AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(xregMatrix), 0, xregMaxLag, includeOriginalXreg)
+
     while (maxPQ < tsSize) {
       j = 0
       // intercept (c)
       history(maxPQ) = op(history(maxPQ), intercept * coefficients(j))
 
       // autoregressive terms
-//      println(s"j=$j  maxPQ=$maxPQ")
       while (j < p && maxPQ - j - 1 >= 0) {
-//        println(s"AR        j=$j  maxPQ=$maxPQ")
-        history(maxPQ) = op(history(maxPQ), ts(maxPQ - j - 1) * coefficients(intercept + j))
+        history(maxPQ) = op(history(maxPQ), ts(maxPQ - j - 1) * coefficients(1 + j))
         j += 1
       }
 
       j = 0
       // exogenous variables
-      while (maxPQ - j - 1 >= 0 && j < p) {
-//        println(s"XREG        j=$j  maxPQ=$maxPQ")
-        var xregImpact = if (includeOriginalXreg) {
-          var value = 0.0
-          for (i <- 0 until xreg.length) {
-            //    0 to 0
-            for( l <- 0 to xregMaxLag){
-              value += xreg(i)(maxPQ - j - 1) * coefficients((xregMaxLag + 1 )*i + 1 + p + q + l)
-            }
-          }
-          value
-        } else 0.0
-        history(maxPQ) = op(history(maxPQ), xregImpact)
-        j += 1
+      var xregImpact = 0.0
+      var psi = 0
+
+      xregImpact = {
+        var sum = 0.0
+        for ((xregVal, index) <- xregPredictors(maxPQ - 1).zipWithIndex){
+          var counter = if (psi == xreg.size){
+            psi = 0
+            0
+          }else psi
+
+          psi += 1
+          sum = xregVal * coefficients(1 + p + q + counter)
+        }
+        sum
       }
+      history(maxPQ) = op(history(maxPQ), xregImpact)
 
       // moving average terms
       j = 0
       while (j < q) {
-        history(maxPQ) = op(history(maxPQ), maTerms(j) * coefficients(intercept + p + j))
+        history(maxPQ) = op(history(maxPQ), maTerms(j) * coefficients(1 + p + j))
         j += 1
       }
 
@@ -533,7 +537,7 @@ class ARIMAXModel(
     val xregArrays = Array.fill[Array[Double]](xregColumns)(Array.empty)
     for ( i <- 0 until xregColumns){
         val xregCol = new BreezeDenseVector( xreg.toArray.slice( xreg.rows * i,  (i + 1) * xreg.rows))
-        val diffXregCol = (new DenseVector(Array.fill(d)(0.0) ++ differencesOfOrderD(xregCol, d).toArray)).toArray
+        val diffXregCol = (new DenseVector(differencesOfOrderD(xregCol, d).toArray)).toArray
         xregArrays(i) = diffXregCol
     }
     xregArrays
