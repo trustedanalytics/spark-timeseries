@@ -475,7 +475,7 @@ class ARIMAXModel(
     val tsSize = ts.size
     var error = 0.0
 
-    val xregMatrix = new BreezeDenseMatrix(rows = xreg(1).length, cols = xreg.size, data = xreg.flatten)
+    val xregMatrix = new BreezeDenseMatrix(rows = xreg.flatten.length / xreg.size, cols = xreg.size, data = xreg.flatten)
     val xregPredictors = AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(xregMatrix), 0, xregMaxLag, includeOriginalXreg)
 
     while (maxPQ < tsSize) {
@@ -497,10 +497,10 @@ class ARIMAXModel(
       xregImpact = {
         var sum = 0.0
         for ((xregVal, index) <- xregPredictors(maxPQ - 1).zipWithIndex){
-          var counter = if (psi == xreg.size){
+          val counter = if (psi == xreg.size){
             psi = 0
             0
-          }else psi
+          } else psi
 
           psi += 1
           sum = xregVal * coefficients(1 + p + q + counter)
