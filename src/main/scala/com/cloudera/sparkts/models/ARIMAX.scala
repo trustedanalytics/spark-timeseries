@@ -1,17 +1,17 @@
 /**
- * Copyright (c) 2016, Cloudera, Inc. All Rights Reserved.
- *
- * Cloudera, Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"). You may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * This software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied. See the License for
- * the specific language governing permissions and limitations under the
- * License.
- */
+  * Copyright (c) 2016, Cloudera, Inc. All Rights Reserved.
+  *
+  * Cloudera, Inc. licenses this file to you under the Apache License,
+  * Version 2.0 (the "License"). You may not use this file except in
+  * compliance with the License. You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * This software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+  * CONDITIONS OF ANY KIND, either express or implied. See the License for
+  * the specific language governing permissions and limitations under the
+  * License.
+  */
 
 package com.cloudera.sparkts.models
 
@@ -41,20 +41,20 @@ object ARIMAX {
     * fitted with an intercept. In order to select the appropriate order of the model, users are advised
     * to inspect ACF and PACF plots, or compare the values of the objective function.
     *
-    * @param p Autoregressive order
-    * @param d Differencing order
-    * @param q Moving average order
-    * @param ts Time series to which to fit an ARIMAX(p, d, q) model
-    * @param xreg A matrix of exogenous variables
-    * @param xregMaxLag The maximum lag order for the dependent variable
+    * @param p                   Autoregressive order
+    * @param d                   Differencing order
+    * @param q                   Moving average order
+    * @param ts                  Time series to which to fit an ARIMAX(p, d, q) model
+    * @param xreg                A matrix of exogenous variables
+    * @param xregMaxLag          The maximum lag order for the dependent variable
     * @param includeOriginalXreg A boolean flag indicating if the non-lagged exogenous variables should
     *                            be included. Default is true.
-    * @param includeIntercept If true the model is fit with an intercept term. Default is true
-    * @param userInitParams A set of user provided initial parameters for optimization. If null
-    *                       (default), initialized using Hannan-Rissanen algorithm. If provided,
-    *                       order of parameter should be: intercept term, AR parameters (in
-    *                       increasing order of lag), MA parameters (in increasing order of lag) and
-    *                       coefficients for exogenous variables (xregMaxLag + 1) for each column.
+    * @param includeIntercept    If true the model is fit with an intercept term. Default is true
+    * @param userInitParams      A set of user provided initial parameters for optimization. If null
+    *                            (default), initialized using Hannan-Rissanen algorithm. If provided,
+    *                            order of parameter should be: intercept term, AR parameters (in
+    *                            increasing order of lag), MA parameters (in increasing order of lag) and
+    *                            coefficients for exogenous variables (xregMaxLag + 1) for each column.
     */
   def fitModel(p: Int,
                d: Int,
@@ -78,12 +78,13 @@ object ARIMAX {
     }
     // Fit/smooth params using CGD
     val params = fitWithCSSCGD(
-        p, d, q, xregMaxLag, differentialTs, includeOriginalXreg, includeIntercept, initParams)
+      p, d, q, xregMaxLag, differentialTs, includeOriginalXreg, includeIntercept, initParams)
 
     val model = new ARIMAXModel(p, d, q, xregMaxLag, params, includeOriginalXreg, includeIntercept)
     model
   }
-  private def estimateARXCoefficients(ts: Vector, xreg: Matrix[Double], p: Int, d: Int, xregMaxLag: Int,includeOriginalXreg: Boolean, includeIntercept: Boolean): Array[Double] = {
+
+  private def estimateARXCoefficients(ts: Vector, xreg: Matrix[Double], p: Int, d: Int, xregMaxLag: Int, includeOriginalXreg: Boolean, includeIntercept: Boolean): Array[Double] = {
     // [Time series data and exogenous values differentiate (http://robjhyndman.com/hyndsight/arimax/)
     val tsVector = new BreezeDenseVector(ts.toArray)
     val xregVector = new BreezeDenseVector(xreg.toArray)
@@ -105,25 +106,25 @@ object ARIMAX {
     * Fit an ARIMAX model using conditional sum of squares estimator, optimized using conjugate
     * gradient descent. Most of the code is copied from ARIMA fitWithCSSCGD method.
     *
-    * @param p Autoregressive order
-    * @param d Differencing order
-    * @param q Moving average order
-    * @param xregMaxLag The maximum lag order for exogenous variables
-    * @param diffedY Differenced time series, as appropriate
+    * @param p                   Autoregressive order
+    * @param d                   Differencing order
+    * @param q                   Moving average order
+    * @param xregMaxLag          The maximum lag order for exogenous variables
+    * @param diffedY             Differenced time series, as appropriate
     * @param includeOriginalXreg A boolean flag indicating if the non-lagged exogenous variables should be included. Default is true.
-    * @param includeIntercept A boolean to indicate if the regression should be run without an intercept
-    * @param initParams Initial parameter guess for optimization
+    * @param includeIntercept    A boolean to indicate if the regression should be run without an intercept
+    * @param initParams          Initial parameter guess for optimization
     * @return Parameters optimized using CSS estimator, with method conjugate gradient descent
     */
   private def fitWithCSSCGD(
-                     p: Int,
-                     d: Int,
-                     q: Int,
-                     xregMaxLag: Int,
-                     diffedY: Array[Double],
-                     includeOriginalXreg: Boolean,
-                     includeIntercept: Boolean,
-                     initParams: Array[Double]): Array[Double] = {
+                             p: Int,
+                             d: Int,
+                             q: Int,
+                             xregMaxLag: Int,
+                             diffedY: Array[Double],
+                             includeOriginalXreg: Boolean,
+                             includeIntercept: Boolean,
+                             initParams: Array[Double]): Array[Double] = {
 
     val optimizer = new NonLinearConjugateGradientOptimizer(
       NonLinearConjugateGradientOptimizer.Formula.FLETCHER_REEVES,
@@ -149,19 +150,19 @@ object ARIMAX {
 /**
   * An autoregressive moving average model with exogenous variables.
   *
-  * @param p Autoregressive order
-  * @param d Differencing order
-  * @param q Moving average order
-  * @param xregMaxLag The maximum lag order for exogenous variables.
-  * @param coefficients The coefficients for the various terms. The order of coefficients is as
-  *                     follows:
-  *                     - Intercept
-  *                     - Autoregressive terms for the dependent variable, in increasing order of lag
-  *                     - Moving-average terms for the dependent variable, in increasing order of lag
-  *                     - For each column in the exogenous matrix (in their original order), the
-  *                     lagged terms in increasing order of lag (excluding the non-lagged versions).
+  * @param p                   Autoregressive order
+  * @param d                   Differencing order
+  * @param q                   Moving average order
+  * @param xregMaxLag          The maximum lag order for exogenous variables.
+  * @param coefficients        The coefficients for the various terms. The order of coefficients is as
+  *                            follows:
+  *                            - Intercept
+  *                            - Autoregressive terms for the dependent variable, in increasing order of lag
+  *                            - Moving-average terms for the dependent variable, in increasing order of lag
+  *                            - For each column in the exogenous matrix (in their original order), the
+  *                            lagged terms in increasing order of lag (excluding the non-lagged versions).
   * @param includeOriginalXreg A boolean flag indicating if the non-lagged exogenous variables should be included.
-  * @param includeIntercept A boolean to indicate if the regression should be run without an intercept
+  * @param includeIntercept    A boolean to indicate if the regression should be run without an intercept
   */
 class ARIMAXModel(
                    val p: Int,
@@ -180,7 +181,7 @@ class ARIMAXModel(
     * there is differencing, the first d terms come from the original series.
     *
     * @param timeSeries The time series
-    * @param xreg A matrix of exogenous variables
+    * @param xreg       A matrix of exogenous variables
     * @return A series consisting of fitted forecasts for timeseries value using exogenous variables.
     */
   def predict(timeSeries: BreezeDenseVector[Double], xreg: Matrix[Double]): BreezeDenseVector[Double] = {
@@ -197,7 +198,7 @@ class ARIMAXModel(
     // [2] Create a vector for history values and calculate them
     val historyLen = differentialTsExtended.size
     val history = new BreezeDenseVector[Double](Array.fill(historyLen)(0.0))
-    iterateARMAX(differentialTsExtended, history, _ + _,  goldStandard = differentialTsExtended, xreg = differentialXreg)
+    iterateARMAX(differentialTsExtended, history, _ + _, goldStandard = differentialTsExtended, exogenousVar = differentialXreg)
 
     // [3] Take last history value as moving-average term
     val maTerms = (for (i <- historyLen - maxLag until historyLen) yield {
@@ -206,8 +207,9 @@ class ARIMAXModel(
 
     // [4] Create a vector for predicted values and calculate predictors value
     val forward = new BreezeDenseVector[Double](Array.fill(nFuture + maxLag)(0.0))
+
     forward(0 until maxLag) := history(-maxLag to -1)
-    iterateARMAX(forward, forward, _ + _, goldStandard = forward, initMATerms = maTerms, xreg = differentialXreg)
+    iterateARMAX(forward, forward, _ + _, goldStandard = forward, initMATerms = maTerms, exogenousVar = differentialXreg)
 
     // [5] Create a vector for results - predicted time-series values
     val results = new BreezeDenseVector[Double](Array.fill(ts.size + nFuture)(0.0))
@@ -357,7 +359,7 @@ class ARIMAXModel(
     * Updates the error vector in place with a new (more recent) error
     * The newest error is placed in position 0, while older errors "fall off the end"
     *
-    * @param maTerms array of errors of length q in ARIMAX(p, d, q), holds errors for t-1 through t-q
+    * @param maTerms  array of errors of length q in ARIMAX(p, d, q), holds errors for t-1 through t-q
     * @param newError the error at time t
     * @return a modified array with the latest error placed into index 0
     */
@@ -382,19 +384,19 @@ class ARIMAXModel(
     * calculates the 1-step ahead ARMA forecasts for series1 assuming current coefficients, and
     * initial MA errors of 0.
     *
-    * @param ts Time series to use for AR terms
-    * @param history Time series holding initial values at each index
-    * @param op Operation to perform between values in dest, and various combinations of ts, errors
-    *           and intercept terms
+    * @param ts           Time series to use for AR terms
+    * @param history      Time series holding initial values at each index
+    * @param op           Operation to perform between values in dest, and various combinations of ts, errors
+    *                     and intercept terms
     * @param goldStandard The time series to which to compare 1-step ahead forecasts to obtain
     *                     moving average errors. Default set to null. In which case, we check if
     *                     errors are directly provided. Either goldStandard or errors can be null,
     *                     but not both
-    * @param errors The time series of errors to be used as error at time i, which is then used
-    *               for moving average terms in future indices. Either goldStandard or errors can
-    *               be null, but not both
-    * @param initMATerms Initialization for first q terms of moving average. If none provided (i.e.
-    *                    remains null, as per default), then initializes to all zeros
+    * @param errors       The time series of errors to be used as error at time i, which is then used
+    *                     for moving average terms in future indices. Either goldStandard or errors can
+    *                     be null, but not both
+    * @param initMATerms  Initialization for first q terms of moving average. If none provided (i.e.
+    *                     remains null, as per default), then initializes to all zeros
     * @return the time series resulting from the interaction of the parameters with the model's
     *         coefficients
     */
@@ -437,36 +439,37 @@ class ARIMAXModel(
     }
     history
   }
+
   /**
     * Perform operations with the ARX and MA terms, based on the time series `ts` and the errors
     * based off of `goldStandard` or `errors`, combined with elements from the series `history`.
     * Weights for terms are taken from the current model configuration.
     *
-    * @param ts Time series to use for ARX terms
-    * @param history Time series holding initial values at each index
-    * @param op Operation to perform between values in dest, and various combinations of ts, errors
-    *           and intercept terms
+    * @param ts           Time series to use for ARX terms
+    * @param history      Time series holding initial values at each index
+    * @param op           Operation to perform between values in dest, and various combinations of ts, errors
+    *                     and intercept terms
     * @param goldStandard The time series to which to compare 1-step ahead forecasts to obtain
     *                     moving average errors. Default set to null. In which case, we check if
     *                     errors are directly provided. Either goldStandard or errors can be null,
     *                     but not both
-    * @param errors The time series of errors to be used as error at time i, which is then used
-    *               for moving average terms in future indices. Either goldStandard or errors can
-    *               be null, but not both
-    * @param initMATerms Initialization for first q terms of moving average. If none provided (i.e.
-    *                    remains null, as per default), then initializes to all zeros
-    * @param xreg An array of array for differenced exogenous variables
+    * @param errors       The time series of errors to be used as error at time i, which is then used
+    *                     for moving average terms in future indices. Either goldStandard or errors can
+    *                     be null, but not both
+    * @param initMATerms  Initialization for first q terms of moving average. If none provided (i.e.
+    *                     remains null, as per default), then initializes to all zeros
+    * @param exogenousVar An array of array for differenced exogenous variables
     * @return The time series resulting from the interaction of the parameters with the model's
     *         coefficients
     */
   private def iterateARMAX(
-                           ts: Vector,
-                           history: BreezeDenseVector[Double],
-                           op: (Double, Double) => Double,
-                           goldStandard: Vector = null,
-                           errors: Vector = null,
-                           initMATerms: Array[Double] = null,
-                           xreg: Array[Array[Double]]): BreezeDenseVector[Double] = {
+                            ts: Vector,
+                            history: BreezeDenseVector[Double],
+                            op: (Double, Double) => Double,
+                            goldStandard: Vector = null,
+                            errors: Vector = null,
+                            initMATerms: Array[Double] = null,
+                            exogenousVar: Array[Array[Double]]): BreezeDenseVector[Double] = {
     require(goldStandard != null || errors != null, "goldStandard or errors must be passed in")
     val maTerms = if (initMATerms == null) Array.fill(q)(0.0) else initMATerms
     val intercept = if (includeIntercept) 1 else 0
@@ -475,16 +478,8 @@ class ARIMAXModel(
     val tsSize = ts.size
     var error = 0.0
 
-    val xregMatrix = new BreezeDenseMatrix(rows = xreg.flatten.length / xreg.size, cols = xreg.size, data = xreg.flatten)
-
-    val xregPredictors = try {
-      AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(xregMatrix), 0, xregMaxLag, includeOriginalXreg)
-    } catch {
-      case e: Exception => {
-        val newXregMatrix = new BreezeDenseMatrix(rows = (xreg.flatten.length - d) / xreg.size, cols = xreg.size, data = xreg.flatten)
-        AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(newXregMatrix), 0, xregMaxLag, includeOriginalXreg)
-      }
-    }
+    val xregMatrix = new BreezeDenseMatrix(rows = exogenousVar.flatten.length / exogenousVar.size, cols = exogenousVar.size, data = exogenousVar.flatten)
+    val xregPredictors = AutoregressionX.assemblePredictors(ts.toArray, MatrixUtil.matToRowArrs(xregMatrix), 0, xregMaxLag, includeOriginalXreg)
 
     while (maxPQ < tsSize) {
       j = 0
@@ -504,8 +499,8 @@ class ARIMAXModel(
 
       xregImpact = {
         var sum = 0.0
-        for ((xregVal, index) <- xregPredictors(maxPQ - 1).zipWithIndex){
-          val counter = if (psi == xreg.size){
+        for ((xregVal, index) <- xregPredictors(maxPQ - 1).zipWithIndex) {
+          val counter = if (psi == exogenousVar.size) {
             psi = 0
             0
           } else psi
@@ -516,6 +511,7 @@ class ARIMAXModel(
         sum
       }
       history(maxPQ) = op(history(maxPQ), xregImpact)
+
 
       // moving average terms
       j = 0
@@ -543,10 +539,10 @@ class ARIMAXModel(
   def differenceXreg(xreg: Matrix[Double]): Array[Array[Double]] = {
     val xregColumns = xreg.cols
     val xregArrays = Array.fill[Array[Double]](xregColumns)(Array.empty)
-    for ( i <- 0 until xregColumns){
-        val xregCol = new BreezeDenseVector( xreg.toArray.slice( xreg.rows * i,  (i + 1) * xreg.rows))
-        val diffXregCol = (new DenseVector(differencesOfOrderD(xregCol, d).toArray)).toArray
-        xregArrays(i) = diffXregCol
+    for (i <- 0 until xregColumns) {
+      val xregCol = new BreezeDenseVector(xreg.toArray.slice(xreg.rows * i, (i + 1) * xreg.rows))
+      val diffXregCol = (new DenseVector(Array.fill(math.max(p, q))(0.0) ++ differencesOfOrderD(xregCol, d).toArray.drop(d))).toArray
+      xregArrays(i) = diffXregCol
     }
     xregArrays
   }
