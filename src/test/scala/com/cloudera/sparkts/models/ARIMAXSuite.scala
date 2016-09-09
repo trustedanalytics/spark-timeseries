@@ -39,10 +39,8 @@ class ARIMAXSuite extends FunSuite {
 
   val tsTrain = new DenseVector(gdp_train)
   val xregTrain = new DenseMatrix(rows = sales_train.length, cols = 2, data = sales_train ++ adBudget_train)
-
   val tsTest = new BreezeDenseVector(gdp_test)
   val xregTest = new DenseMatrix(rows = sales_test.length, cols = 2, data = sales_test ++ adBudget_test)
-  val xregTestChangedColumns = new DenseMatrix(rows = sales_test.length, cols = 2, data = adBudget_test ++ sales_test)
 
   val tsTrain_2 = new DenseVector(Array(93.0,82,109,110,109,84,100,91,119,78,99,92,76,99,84,103,107,106,106,89,121,103,92,94,99,94,90,99,100,125,78,95,92,84,99,88,85,121,119,94,89,121,110,110,78,88,86,77,106,127,91,98,108,110,88,118,112,104,97,100,97,96,95,111,84,102,98,110,108,92,121,104,109,105,93,74,106,118,97,109,90,91,95,95,111,112,96,122,108,96,78,124,79,89,98,127,110,92,120,109,106,124,135,110,98,108,109,103,106,92,89,82,118,94,112,86))
   val xregTrain_2 = new DenseMatrix(rows = 116, cols = 4, data = Array(416,393,444,445,426,435,471,397,454,416,424,395,401,471,400,418,476,436,442,472,492,443,418,417,423,382,433,409,436,437,372,419,423,415,432,413,361,415,437,391,395,468,415,386,410,437,401,446,492,443,438,417,384,418,403,408,380,422,432,405,437,444,485,426,411,440,400,440,432,439,431,384,404,439,401,401,427,375,411,428,376,407,403,454,478,418,428,401,467,456,446,509,406,431,458,469,450,462,538,435,485,439,451,457,495,479,418,423,430,477,423,462,481,406,450,405,
@@ -55,675 +53,84 @@ class ARIMAXSuite extends FunSuite {
     24,24,25,25,25,25,25,25,25,23,23,23,23,23,23,23,
     51,54,49,46,42,41,45,46,48,41,42,48,43,47,48,46 ))
 
-  def average(v: DenseVector): Double = {
+  def mean(t: BreezeDenseVector[Double]): Double = {
+    val ts = new DenseVector(t.toArray)
     var sum = 0.0
-    v.values.map( va => sum += va)
-    sum/tsTrain.values.length
+    ts.values.map( va => sum += va)
+    sum/t.length
   }
-  def mse(orginal: BreezeDenseVector[Double], predicted: BreezeDenseVector[Double]): Double = {
-    var sumSquaredError = 0.0
-    for (o <- orginal; p <- predicted){
-      val error = o - p
-      sumSquaredError += Math.pow(error, 2)
+  def maxDeviation(mean: Double, ts: BreezeDenseVector[Double]): Double ={
+    var max = 0.0
+    for (t <- ts){
+      val error = Math.abs(t - mean)
+      if (error > max) max = error }
+    max
+  }
+
+  /* First data set */
+  test("MAX(0,0,1) 1 true - first data set"){
+    val model = ARIMAX.fitModel(0, 0, 1, tsTrain, xregTrain, 1)
+    assert(model.coefficients.length == 6)
+    val results = model.predict(tsTest, xregTest)
+    results.length should be (tsTest.length)
+
+    for ( i <- results ){
+      i should be (mean(tsTest) +- 10)
     }
-    val mse = Math.sqrt(sumSquaredError / orginal.length)
-    println(s"MSE =$mse")
-    mse
   }
 
-  test("1 MAX(0,0,1) 1 t"){
-    val a: Double = average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 1, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    results.map( v => v should be (a +- 10))
-    mse(tsTest, results)
-    println(results)
-  }
-  test("2 MAX(0,0,1) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 1, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("3 MAX(0,0,1) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 1, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("4 MAX(0,0,1) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 1, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 2)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("5 MAX(0,0,2) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 2, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 7)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("6 MAX(0,0,2) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 2, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 5)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("7 MAX(0,0,2) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 2, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 5)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("8 MAX(0,0,2) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 2, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 3)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("9 MAX(0,0,3) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 3, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 8)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("10 MAX(0,0,3) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 3, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("11 MAX(0,0,3) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 3, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("12 MAX(0,0,3) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 0, 3, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("13 IMAX(0,1,1) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 1, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("14 IMAX(0,1,1) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 1, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("15 IMAX(0,1,1) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 1, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("16 IMAX(0,1,1) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 1, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 2)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("17 IMAX(0,1,2) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 2, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 7)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("18 IMAX(0,1,2) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 2, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 5)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("19 IMAX(0,1,2) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 2, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 5)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("20 IMAX(0,1,2) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 2, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 3)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("21 IMAX(0,1,3) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 3, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 8)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("22 IMAX(0,1,3) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 3, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("23 IMAX(0,1,3) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 3, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("24 IMAX(0,1,3) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 1, 3, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("25 IMAX(0,2,1) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 1, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("26 IMAX(0,2,1) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 1, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("27 IMAX(0,2,1) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 1, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("28 IMAX(0,2,1) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 1, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 2)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("29 IMAX(0,2,2) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 2, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 7)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("30 IMAX(0,2,2) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 2, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 5)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("31 IMAX(0,2,2) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 2, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 5)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("32 IMAX(0,2,2) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 2, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 3)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("33 IMAX(0,2,3) 1 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 3, tsTrain, xregTrain, 1, true)
-    assert( model1.coefficients.length == 8)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("34 IMAX(0,2,3) 1 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 3, tsTrain, xregTrain, 1, false)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("35 IMAX(0,2,3) 0 t"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 3, tsTrain, xregTrain, 0, true)
-    assert( model1.coefficients.length == 6)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-  test("36 IMAX(0,2,3) 0 f"){
-    average(tsTrain)
-    val model1 = ARIMAX.fitModel(0, 2, 3, tsTrain, xregTrain, 0, false)
-    assert( model1.coefficients.length == 4)
-    val results = model1.predict(tsTest, xregTest)
-    results.length should be (tsTest.length)
-    mse(tsTest, results)
-    println(results)
-  }
-
-  test("1 ARIMAX(1,1,1) 0 t t"){
-    // c, ar, ma, 4xreg
-    val model1 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 0, true, true)
-    assert( model1.coefficients.length == 7)
-    val results = model1.predict(tsTest_2, xregTest_2)
+  test("MAX(0,0,2) 1 true"){
+    val model = ARIMAX.fitModel(0, 0, 2, tsTrain_2, xregTrain_2, 1)
+    assert(model.coefficients.length == 11)
+    val results = model.predict(tsTest_2, xregTest_2)
     results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
+
+    for ( i <- results ){
+      i should be (mean(tsTest_2) +- 2)
+    }
   }
-  test("2 ARIMAX(1,1,1) 0 t f"){
-    // c, ar, ma, 4xreg
-    val model2 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 0, true, false)
-    assert( model2.coefficients.length == 7)
-    val results = model2.predict(tsTest_2, xregTest_2)
+  test("IMAX(0,1,1) 1 true"){
+    val model = ARIMAX.fitModel(0, 1, 1, tsTrain_2, xregTrain_2, 1)
+    assert(model.coefficients.length == 10)
+    val results = model.predict(tsTest_2, xregTest_2)
     results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
+
+    for ( i <- results ){
+      i should be (mean(tsTest_2) +- 2)
+    }
   }
 
-  test("3 ARIMAX(1,1,1) 0 f f"){
-    // c, ar, ma
-    val model3 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 0, false, false)
-    assert( model3.coefficients.length == 3)
-    val results = model3.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
+  test("ARIMAX(2,1,1) 1 true false - first data set"){
+    val model = ARIMAX.fitModel(2, 1, 1, tsTrain, xregTrain, 1, includeIntercept = false)
+    assert(model.coefficients.length == 8)
+    val results = model.predict(tsTest, xregTest)
+    results.length should be (tsTest.length)
+    
+    // The timeseries data are quite scattered that's why we multiply max deviation by 2 
+    for ( i <- results ){
+      i should be (mean(tsTest) +- maxDeviation(mean(tsTest),tsTest )*2)
+    }
   }
 
-  test("4 ARIMAX(1,1,1) 0 f t"){
-    // c, ar, ma
-    val model4 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 0, false, true)
-    assert( model4.coefficients.length == 3)
-    val results = model4.predict(tsTest_2, xregTest_2)
+  test("ARIMAX(1,1,1) 1 true true"){
+    val model = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 1)
+    assert(model.coefficients.length == 11)
+    val results = model.predict(tsTest_2, xregTest_2)
     results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
+    
+    for ( i <- results ){
+      i should be (mean(tsTest_2) +- 5)
+    }
   }
 
-  test("5 ARIMAX(1,1,1) 1 t t"){
-    // c, ar, ma, 4xreg x 2
-    val model5 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 1, true, true)
-    assert( model5.coefficients.length == 11)
-    val results = model5.predict(tsTest_2, xregTest_2)
+  test("ARIMAX(2,1,1) 1 true false"){
+    val model = ARIMAX.fitModel(2, 1, 1, tsTrain_2, xregTrain_2, 1, includeIntercept = false)
+    assert(model.coefficients.length == 12)
+    val results = model.predict(tsTest_2, xregTest_2)
     results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
 
-  test("6 ARIMAX(1,1,1) 1 t f"){
-    // c, ar, ma, 4xreg x 2
-    val model6 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 1, true, false)
-    assert( model6.coefficients.length == 11)
-    val results = model6.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test("7 ARIMAX(1,1,1) 1 f f"){
-    // c, ar, ma, 4xreg
-    val model7 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 1, false, false)
-    assert( model7.coefficients.length == 7)
-    val results = model7.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test("8 ARIMAX(1,1,1) 1 f t"){
-    // c, ar, ma, 4xreg
-    val model8 = ARIMAX.fitModel(1, 1, 1, tsTrain_2, xregTrain_2, 1, false, true)
-    assert( model8.coefficients.length == 7)
-    val results = model8.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  val p = 2
-  test(s"9 ARIMAX(2,1,1) 0 t t"){
-    // c, ar, ma, 4xreg
-    val model1 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 0, true, true)
-    assert( model1.coefficients.length == 8)
-    val results = model1.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"10 ARIMAX(2,1,1) 0 t f"){
-    // c, ar, ma, 4xreg
-    val model2 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 0, true, false)
-    assert( model2.coefficients.length == 8)
-    val results = model2.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"11 ARIMAX(2,1,1) 0 f f"){
-    // c, ar, ma
-    val model3 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 0, false, false)
-    assert( model3.coefficients.length == 4)
-    val results = model3.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"12 ARIMAX(2,1,1) 0 f t"){
-    // c, ar, ma
-    val model4 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 0, false, true)
-    assert( model4.coefficients.length == 4)
-    val results = model4.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"13 ARIMAX(2,1,1) 1 t t"){
-    // c, ar, ma, 4xreg x 2
-    val model5 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 1, true, true)
-    assert( model5.coefficients.length == 12)
-    val results = model5.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"14 ARIMAX(2,1,1) 1 t f"){
-    // c, ar, ma, 4xreg x 2
-    val model6 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 1, true, false)
-    assert( model6.coefficients.length == 12)
-    val results = model6.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"15 ARIMAX(2,1,1) 1 f f"){
-    // c, ar, ma, 4xreg
-    val model7 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 1, false, false)
-    assert( model7.coefficients.length == 8)
-    val results = model7.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"16 ARIMAX(2,1,1) 1 f t"){
-    // c, ar, ma, 4xreg
-    val model8 = ARIMAX.fitModel(p, 1, 1, tsTrain_2, xregTrain_2, 1, false, true)
-    assert( model8.coefficients.length == 8)
-    val results = model8.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  val q = 2
-  test(s"17 ARIMAX(2,1,2) 0 t t"){
-    // c, ar, ma, 4xreg
-    val model1 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 0, true, true)
-    assert( model1.coefficients.length == 9)
-    val results = model1.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"18 ARIMAX(2,1,2) 0 t f"){
-    // c, ar, ma, 4xreg
-    val model2 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 0, true, false)
-    assert( model2.coefficients.length == 9)
-    val results = model2.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"19 ARIMAX(2,1,2) 0 f f"){
-    // c, ar, ma
-    val model3 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 0, false, false)
-    assert( model3.coefficients.length == 5)
-    val results = model3.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"20 ARIMAX(2,1,2) 0 f t"){
-    // c, ar, ma
-    val model4 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 0, false, true)
-    assert( model4.coefficients.length == 5)
-    val results = model4.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"21 ARIMAX(2,1,2) 1 t t"){
-    // c, ar, ma, 4xreg x 2
-    val model5 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 1, true, true)
-    assert( model5.coefficients.length == 13)
-    val results = model5.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"22 ARIMAX(2,1,2) 1 t f"){
-    // c, ar, ma, 4xreg x 2
-    val model6 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 1, true, false)
-    assert( model6.coefficients.length == 13)
-    val results = model6.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"23 ARIMAX(2,1,2) 1 f f"){
-    // c, ar, ma, 4xreg
-    val model7 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 1, false, false)
-    assert( model7.coefficients.length == 9)
-    val results = model7.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"24 ARIMAX(2,1,2) 1 f t"){
-    // c, ar, ma, 4xreg
-    val model8 = ARIMAX.fitModel(p, 1, q, tsTrain_2, xregTrain_2, 1, false, true)
-    assert( model8.coefficients.length == 9)
-    val results = model8.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  val d = 2
-  test(s"25 ARIMAX(2,2,2) 0 t t"){
-    // c, ar, ma, 4xreg
-    val model1 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 0, true, true)
-    assert( model1.coefficients.length == 9)
-    val results = model1.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"26 ARIMAX(2,2,2) 0 t f"){
-    // c, ar, ma, 4xreg
-    val model2 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 0, true, false)
-    assert( model2.coefficients.length == 9)
-    val results = model2.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"27 ARIMAX(2,2,2) 0 f f"){
-    // c, ar, ma
-    val model3 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 0, false, false)
-    assert( model3.coefficients.length == 5)
-    val results = model3.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"28 ARIMAX(2,2,2) 0 f t"){
-    // c, ar, ma
-    val model4 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 0, false, true)
-    assert( model4.coefficients.length == 5)
-    val results = model4.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"29 ARIMAX(2,2,2) 1 t t"){
-    // c, ar, ma, 4xreg x 2
-    val model5 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 1, true, true)
-    assert( model5.coefficients.length == 13)
-    val results = model5.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"30 ARIMAX(2,2,2) 1 t f"){
-    // c, ar, ma, 4xreg x 2
-    val model6 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 1, true, false)
-    assert( model6.coefficients.length == 13)
-    val results = model6.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"31 ARIMAX(2,2,2) 1 f f"){
-    // c, ar, ma, 4xreg
-    val model7 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 1, false, false)
-    assert( model7.coefficients.length == 9)
-    val results = model7.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
-  }
-
-  test(s"32 ARIMAX(2,2,2) 1 f t"){
-    // c, ar, ma, 4xreg
-    val model8 = ARIMAX.fitModel(p, d, q, tsTrain_2, xregTrain_2, 1, false, true)
-    assert( model8.coefficients.length == 9)
-    val results = model8.predict(tsTest_2, xregTest_2)
-    results.length should be (tsTest_2.length)
-    mse(tsTest_2, results)
-    println(results)
+    for ( i <- results ){
+      i should be (mean(tsTest_2) +- 10)
+    }
   }
 }
